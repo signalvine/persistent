@@ -24,8 +24,7 @@ specs :: Spec
 specs = describe "Migration" $ do
     #ifdef WITH_NOSQL
     return ()
-    #else
+    #endif
     it "is idempotent" $ db $ do
       again <- getMigration migration
       liftIO $ again @?= []
-    #endif
