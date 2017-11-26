@@ -4,12 +4,12 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 module MigrationColumnLengthTest where
 
+#if defined(WITH_POSTGRESQL) || defined(WITH_MYSQL)
+
 import Database.Persist.TH
 import qualified Data.Text as T
 
 import Init
-
-#if defined(WITH_POSTGRESQL) || defined(WITH_MYSQL)
 
 share [mkPersist sqlSettings, mkMigrate "migration"] [persistLowerCase|
 VaryingLengths
