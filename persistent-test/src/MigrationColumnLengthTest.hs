@@ -22,9 +22,9 @@ VaryingLengths
 
 specs :: Spec
 specs = describe "Migration" $ do
-    #ifdef WITH_NOSQL
+#ifdef WITH_NOSQL
     return ()
-    #endif
+#endif
     it "is idempotent" $ db $ do
       again <- getMigration migration
       liftIO $ again @?= []
