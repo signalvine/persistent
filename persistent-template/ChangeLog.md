@@ -1,5 +1,7 @@
 ## Unreleased changes
 
+* Allow aeson 1.5. [#1085](https://github.com/yesodweb/persistent/pull/1085)
+
 ## 2.8.2.3
 
 * Require extensions in a more friendly manner. [#1030](https://github.com/yesodweb/persistent/pull/1030)
