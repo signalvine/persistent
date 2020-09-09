@@ -26,6 +26,8 @@ module Database.Persist.MySQL
     , copyUnlessNull
     , copyUnlessEmpty
     , copyUnlessEq
+    -- * Internal
+    , open''
     ) where
 
 import qualified Blaze.ByteString.Builder.Char8 as BBB
@@ -115,35 +117,39 @@ withMySQLConn = withSqlConn . open'
 
 -- | Internal function that opens a connection to the MySQL
 -- server.
-open' :: MySQL.ConnectInfo -> LogFunc -> IO SqlBackend
-open' ci logFunc = do
+open'' :: MySQL.ConnectInfo -> LogFunc -> IO (MySQL.Connection, SqlBackend)
+open'' ci logFunc = do
     conn <- MySQL.connect ci
     MySQLBase.autocommit conn False -- disable autocommit!
     smap <- newIORef $ Map.empty
-    return $ SqlBackend
-        { connPrepare    = prepare' conn
-        , connStmtMap    = smap
-        , connInsertSql  = insertSql'
-        , connInsertManySql = Nothing
-        , connUpsertSql = Nothing
-        , connPutManySql = Just putManySql
-        , connClose      = MySQL.close conn
-        , connMigrateSql = migrate' ci
-        , connBegin      = \_ mIsolation -> do
-            forM_ mIsolation $ \iso -> MySQL.execute_ conn (makeIsolationLevelStatement iso)
-            MySQL.execute_ conn "start transaction" >> return ()
-        , connCommit     = const $ MySQL.commit   conn
-        , connRollback   = const $ MySQL.rollback conn
-        , connEscapeName = pack . escapeDBName
-        , connNoLimit    = "LIMIT 18446744073709551615"
-        -- This noLimit is suggested by MySQL's own docs, see
-        -- <http://dev.mysql.com/doc/refman/5.5/en/select.html>
-        , connRDBMS      = "mysql"
-        , connLimitOffset = decorateSQLWithLimitOffset "LIMIT 18446744073709551615"
-        , connLogFunc    = logFunc
-        , connMaxParams = Nothing
-        , connRepsertManySql = Just repsertManySql
-        }
+    let backend = SqlBackend
+          { connPrepare    = prepare' conn
+          , connStmtMap    = smap
+          , connInsertSql  = insertSql'
+          , connInsertManySql = Nothing
+          , connUpsertSql = Nothing
+          , connPutManySql = Just putManySql
+          , connClose      = MySQL.close conn
+          , connMigrateSql = migrate' ci
+          , connBegin      = \_ mIsolation -> do
+              forM_ mIsolation $ \iso -> MySQL.execute_ conn (makeIsolationLevelStatement iso)
+              MySQL.execute_ conn "start transaction" >> return ()
+          , connCommit     = const $ MySQL.commit   conn
+          , connRollback   = const $ MySQL.rollback conn
+          , connEscapeName = pack . escapeDBName
+          , connNoLimit    = "LIMIT 18446744073709551615"
+          -- This noLimit is suggested by MySQL's own docs, see
+          -- <http://dev.mysql.com/doc/refman/5.5/en/select.html>
+          , connRDBMS      = "mysql"
+          , connLimitOffset = decorateSQLWithLimitOffset "LIMIT 18446744073709551615"
+          , connLogFunc    = logFunc
+          , connMaxParams = Nothing
+          , connRepsertManySql = Just repsertManySql
+          }
+    pure (conn, backend)
+
+open' :: MySQL.ConnectInfo -> LogFunc -> IO SqlBackend
+open' ci logFunc = snd <$> open'' ci logFunc
 
 -- | Prepare a query.  We don't support prepared statements, but
 -- we'll do some client-side preprocessing here.
